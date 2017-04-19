@@ -2,7 +2,7 @@
 1) git clone https://github.com/rachitGulati/react-cards.git
 2) cd react-cards
 3) npm install
-4) npm run dev
+4) npm run build
 5) python -m SimpleHTTPServer
 
-[Live Demo](http://codepen.io/rachitgulati26/pen/aWbgZM)
+[Live Demo](http://codepen.io/rachitgulati26/pen/aWbgZM) :)
