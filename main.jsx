@@ -8,7 +8,7 @@ class App extends React.Component {
   
   constructor(props){
     super(props);
-    this.state = {containers: props.containers || []};
+    this.state = {containers: JSON.parse(localStorage.getItem('data')) || []};
     this.addNewSwimLane = this.addNewSwimLane.bind(this);
     this.addCardInSwimLane = this.addCardInSwimLane.bind(this);
     this.deleteContainer = this.deleteContainer.bind(this);
@@ -16,23 +16,25 @@ class App extends React.Component {
     this.handleTitleChange = this.handleTitleChange.bind(this);
     this.handleCardChange = this.handleCardChange.bind(this);
     this.deleteCard = this.deleteCard.bind(this);
-    this.synchStoreWithState = this.synchStoreWithState.bind(this);
+    this.syncStoreWithState = this.syncStoreWithState.bind(this);
   }
-  synchStoreWithState(allContainter){
+
+  syncStoreWithState(allContainter){
     this.setState({containers:allContainter});
     localStorage.setItem('data', JSON.stringify(allContainter));
   }
+
   deleteContainer(container){
     let answer = confirm('Are your sure to delete it? If yes, click `OK`.')
     if(answer){
       let containersLeft = Utils.removeContainer(this.state.containers, container);
-      this.synchStoreWithState(containersLeft);
+      this.syncStoreWithState(containersLeft);
     }
   }
-  
+
   deleteCard(container, card) {
     let allContainter = Utils.deleteCard(this.state.containers, container, card);
-    this.synchStoreWithState(allContainter);
+    this.syncStoreWithState(allContainter);
   }
 
   getEmptyContainer(){
@@ -49,27 +51,47 @@ class App extends React.Component {
     
     let allContainter = Utils.addCard(this.state.containers, container, card, -1);
     
-    this.synchStoreWithState(allContainter);
+    this.syncStoreWithState(allContainter);
     
   }
 
   addNewSwimLane(){
     if(this.state.containers){
       let containers = this.state.containers.concat(this.getEmptyContainer());
-      this.synchStoreWithState(containers);
+      this.syncStoreWithState(containers);
     }
   }
 
   handleTitleChange({target,container}){
     let allContainter = Utils.changeContainerTitle(this.state.containers, container, target.value);
-    this.synchStoreWithState(allContainter);
+    this.syncStoreWithState(allContainter);
   }
   
   handleCardChange({type, container, card, value}){
-    let allContainter = Utils.updateCard(this.state.containers, container, card, type, value);
-    this.synchStoreWithState(allContainter);
+    let {allContainter, synch} = Utils.updateCard(this.state.containers, container, card, type, value);
+    if(synch){
+      this.syncStoreWithState(allContainter);  
+    }
   }
 
+  componentDidMount(){
+    var self = this;
+    window.drake.on('drop',function(el, target, source, sibling){
+      let cardId = el.id.replace('card','');
+      let targetContainerId = target.id.replace('swim','');
+      let sourceContainerId = source.id.replace('swim','');
+      let siblingCardId = -1;
+      if(sibling){
+        siblingCardId = sibling.id.replace('card','');
+      }
+      let allContainter = JSON.parse(localStorage.getItem('data'));
+      let allNewContainers = Utils.changeCardPosition(allContainter, targetContainerId, sourceContainerId, cardId, siblingCardId);
+      localStorage.setItem('data', JSON.stringify(allContainter));
+      drake.cancel(true); // Hack to stop changing DOM.
+      self.setState({containers:allContainter});
+    });
+  }
+  
   render () {
     let {containers} = this.state,
     actions = {addCardInSwimLane: this.addCardInSwimLane, deleteContainer: this.deleteContainer, 
@@ -93,45 +115,6 @@ class App extends React.Component {
     );
   }
 }
-
-let containersList = JSON.parse(localStorage.getItem('data'));
+/*Init the drag and drop library*/
 window.drake = dragula([]);
-ReactDom.render(<App containers = {containersList} />, document.getElementById('app'));
-
-// window.drake.on('drop',function(el, target, source, sibling){
-//   let cardid = el.id.replace('card','');
-//   let targetid = target.id.replace('swim','');
-//   let sourceid = source.id.replace('swim','');
-//   let siblingId = -1;
-//   console.log(el, target, source, sibling);
-//   if(sibling){
-//     siblingId = el.id.replace('card','');
-//   }
-//   if(sourceid === targetid){
-//     allContainter = containers.map((cont) => {
-//       let siblingIndex = -1, cardIndex;
-      
-//       if(cont.id == sourceid){
-//         for(let i=0;i<cont.cards.length;i++) {
-//           if(cont.cards[i].id == cardid) {
-//             cardIndex = i;
-//           }else if(cont.cards[i].id == siblingId) {
-//             siblingIndex = i;
-//           }
-//         }
-//         if(siblingIndex == -1){
-//           let card ;
-//           cont.cards = cont.cards.filter(function(c){
-//             if(c.id != cardid){
-//               return true;
-//             }else{
-//               card = c;
-//             }
-//           });
-//           cont.cards.concat(card);
-//         }else{
-//           cont.cards.splice(siblingIndex - 1, 0, this.splice(cardIndex, 1)[0]);
-//         }
-//       }
-//       return cont;
-//     });
+ReactDom.render(<App/>, document.getElementById('app'));
